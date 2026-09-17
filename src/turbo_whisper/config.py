@@ -61,7 +61,7 @@ class Config:
     typing_delay_ms: int = 5  # Milliseconds between keystrokes (increase if terminal freezes)
 
     # Transcription settings
-    transcription_timeout: float = 30.0  # Max seconds to wait for transcription API response
+    transcription_timeout: float = 30.0  # HTTP read/write timeout in seconds; raise for long recordings
 
     # Claude Code integration
     claude_integration: bool = True  # Enable integration server for Claude Code
