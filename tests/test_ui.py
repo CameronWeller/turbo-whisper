@@ -1,0 +1,145 @@
+from unittest.mock import Mock
+
+from PyQt6.QtCore import Qt
+from PyQt6.QtTest import QTest
+from PyQt6.QtWidgets import QApplication, QLabel, QLineEdit, QPushButton
+
+from turbo_whisper.config import Config
+from turbo_whisper.main import SignalBridge, TurboWhisper
+
+
+def test_navigation_is_separate_from_compact_recording_view(window, qapp):
+    window._toggle_settings()
+    qapp.processEvents()
+    assert window.settings_panel.isVisible()
+    assert not window.isVisible()
+    assert window.width() <= 420
+    for index in range(4):
+        window.navigation.setCurrentRow(index)
+        qapp.processEvents()
+        assert window.pages.currentIndex() == index
+        assert window.pages.currentWidget().verticalScrollBar().value() == 0
+    window.settings_panel.resize(740, 560)
+    qapp.processEvents()
+    assert window.save_btn.isVisible()
+    assert window.save_btn.geometry().right() <= window.settings_panel.width()
+
+
+def test_hidden_api_key_is_editable_and_saved(window, qapp):
+    window.api_key_input.setText("synthetic-secret")
+    assert not window.api_key_input.isReadOnly()
+    assert window.api_key_input.echoMode() == QLineEdit.EchoMode.Password
+    window._save_settings()
+    assert Config.load().api_key == "synthetic-secret"
+    window._toggle_key_visibility()
+    assert window.api_key_input.text() == "synthetic-secret"
+    assert window.api_key_input.echoMode() == QLineEdit.EchoMode.Normal
+
+
+def test_saving_interaction_options_reloads_shortcut_once(window):
+    reloads = Mock()
+    window.settings_saved.connect(reloads)
+    window.hotkey_input.setText("ctrl+alt+w")
+    window.hold_checkbox.setChecked(True)
+    window.timeout_input.setValue(600)
+    window._save_settings()
+    assert Config.load().hotkey == ["ctrl", "alt", "w"]
+    assert Config.load().push_to_talk
+    assert Config.load().transcription_timeout == 600
+    reloads.assert_called_once_with()
+
+
+def test_invalid_settings_do_not_destroy_saved_config(window):
+    window.config.save()
+    before = Config.get_config_path().read_bytes()
+    window.api_url_input.setText("not an endpoint")
+    window._save_settings()
+    assert Config.get_config_path().read_bytes() == before
+    assert "valid HTTP" in window.save_feedback.text()
+    window.api_url_input.setText("http://localhost:8000/transcribe")
+    window.hotkey_input.setText("ctrl+unsupported-key")
+    window._save_settings()
+    assert Config.get_config_path().read_bytes() == before
+
+
+def test_start_button_and_escape_are_real_actions(window, qapp):
+    record, cancel = Mock(), Mock()
+    window.record_requested.connect(record)
+    window.cancel_requested.connect(cancel)
+    QTest.mouseClick(window.record_btn, Qt.MouseButton.LeftButton)
+    record.assert_called_once_with()
+    QTest.keyClick(window, Qt.Key.Key_Escape)
+    cancel.assert_called_once_with()
+
+
+def test_history_copy_preserves_full_plain_text(window, qapp):
+    text = "<b>This is plain text, with a complete sentence longer than forty characters.</b>"
+    window.config.history = [{"text": text, "timestamp": "2026-10-29T12:00:00"}]
+    window._refresh_history()
+    item = window.history_list.itemWidget(window.history_list.item(0))
+    assert item.findChild(QLabel).textFormat() == Qt.TextFormat.PlainText
+    QTest.mouseClick(item.findChild(QPushButton), Qt.MouseButton.LeftButton)
+    assert QApplication.clipboard().text() == text
+
+
+def test_hold_events_are_ordered_on_qt_thread_even_for_a_short_tap(qapp):
+    controller = object.__new__(TurboWhisper)
+    controller.config = Config(push_to_talk=True)
+    controller.signals = SignalBridge()
+    transitions = []
+    controller.signals.recording_requested.connect(
+        transitions.append, Qt.ConnectionType.QueuedConnection
+    )
+    controller._on_hotkey_activate()
+    controller._on_hotkey_deactivate()
+    qapp.processEvents()
+    assert transitions == [True, False]
+
+
+def test_old_focused_window_result_cannot_overwrite_a_new_recording():
+    controller = object.__new__(TurboWhisper)
+    controller.window = Mock()
+    controller.is_recording = True
+    controller._recording_token = 2
+    controller._on_focused_window_detected("Old editor", 1)
+    controller.window.set_status.assert_not_called()
+    controller._on_focused_window_detected("Current editor", 2)
+    controller.window.set_status.assert_called_once_with("Listening (Current editor)", animate=True)
+
+
+def test_waveform_stops_its_timer_when_hidden(window, qapp):
+    window.show()
+    window.waveform.set_recording(True)
+    qapp.processEvents()
+    assert window.waveform.animation_timer.isActive()
+    window.hide()
+    qapp.processEvents()
+    assert not window.waveform.animation_timer.isActive()
+
+
+def test_launcher_reopens_the_existing_settings_window(qapp, monkeypatch):
+    import uuid
+
+    from PyQt6.QtNetwork import QLocalSocket
+    from PyQt6.QtTest import QSignalSpy
+
+    from turbo_whisper import main
+
+    name = "turbo-whisper-test-" + uuid.uuid4().hex
+    monkeypatch.setattr(main, "_activation_name", lambda: name)
+    controller = object.__new__(TurboWhisper)
+    controller.app = qapp
+    controller._show_settings = Mock()
+    controller._setup_activation_server()
+    activated = QSignalSpy(controller._activation_server.newConnection)
+    socket = QLocalSocket()
+    try:
+        socket.connectToServer(name)
+        assert socket.waitForConnected(500)
+        # Windows may finish the named-pipe connection before Qt dispatches its signal.
+        if not activated:
+            assert activated.wait(1500)
+        controller._show_settings.assert_called_once()
+    finally:
+        socket.close()
+        controller._activation_server.close()

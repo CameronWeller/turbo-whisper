@@ -1,7 +1,11 @@
 {
   "api_url": "https://api.openai.com/v1/audio/transcriptions",
   "api_key": "sk-your-api-key-here",
-  "hotkey": ["alt", "space"],
+  "hotkey": [
+    "alt",
+    "space"
+  ],
+  "push_to_talk": false,
   "sample_rate": 16000,
   "channels": 1,
   "chunk_size": 1024,
@@ -14,6 +18,9 @@
   "auto_paste": true,
   "copy_to_clipboard": true,
   "language": "en",
+  "transcription_timeout": 30.0,
   "history": [],
-  "history_max": 20
+  "history_max": 20,
+  "api_model": "whisper-1",
+  "claude_integration": false
 }

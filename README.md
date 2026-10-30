@@ -6,7 +6,7 @@
   </picture>
 </p>
 
-[![CodeRabbit Pull Request Reviews](https://img.shields.io/coderabbit/prs/github/knowall-ai/turbo-whisper?label=CodeRabbit+Reviews&labelColor=171717&color=FF570A)](https://coderabbit.ai)
+[![CI](https://github.com/CameronWeller/turbo-whisper/actions/workflows/ci.yml/badge.svg)](https://github.com/CameronWeller/turbo-whisper/actions/workflows/ci.yml)
 
 Turbo Whisper is a **free, open source** voice dictation and transcription app for Linux, macOS, and Windows. A SuperWhisper alternative with a beautiful GUI for real-time speech to text (STT). Supports **99 languages** via OpenAI Whisper. Perfect for accessibility, RSI, and hands-free typing.
 
@@ -32,6 +32,39 @@ application behavior; runtime fixes and improvements will be documented in commi
 The original project is [KnowAll AI's Turbo Whisper](https://github.com/knowall-ai/turbo-whisper).
 Its authorship and MIT license are preserved. Upstream's PPA and AUR instructions
 below install upstream builds; build this fork from source to use this fork.
+
+## A calmer desktop experience
+
+A compact waveform appears while you dictate. A separate, resizable window keeps
+Dictation, Connection, Audio and History easy to find, with a neutral palette and
+clear controls inspired by Superwhisper. This remains an independent MIT project.
+
+![Turbo Whisper dictation settings](docs/screenshots/dictation.png)
+
+![Compact recording waveform](docs/screenshots/recording.png)
+
+The [upstream integration ledger](docs/UPSTREAM_PR_INTEGRATION.md) records every
+open upstream PR reviewed for this fork, author credit, improvements and validation.
+
+Build the maintained fork:
+
+```bash
+git clone https://github.com/CameronWeller/turbo-whisper.git
+cd turbo-whisper
+# Ubuntu build prerequisite: sudo apt install portaudio19-dev
+uv sync --locked --extra dev
+uv run turbo-whisper
+uv build
+```
+
+The launcher opens settings; `turbo-whisper --background` starts in the background.
+On GNOME/KDE Wayland, approve the desktop shortcut dialog. Manual recording remains
+available when no global shortcut backend is supported. If native text insertion
+is unavailable, the app copies the complete result and asks you to paste it.
+
+Turbo Whisper sends recordings to the endpoint you configure. For offline use,
+run an OpenAI-compatible server locally. It does not bundle offline model weights.
+The separately installed Superwhisper application has its own offline engine.
 
 ## Features
 
@@ -105,7 +138,7 @@ chmod +x ~/.claude/hooks/post-response.sh
 
 ## Installation
 
-### Ubuntu/Debian (PPA) - Recommended
+### Upstream Ubuntu/Debian packages
 
 ```bash
 sudo add-apt-repository ppa:bengweeks/turbo-whisper
@@ -113,7 +146,7 @@ sudo apt update
 sudo apt install turbo-whisper
 ```
 
-### Arch Linux (AUR) - Recommended
+### Upstream Arch Linux packages
 
 ```bash
 # Using yay
@@ -209,6 +242,7 @@ Create `~/.config/turbo-whisper/config.json` (Linux/macOS) or `%APPDATA%\turbo-w
   "api_url": "https://api.openai.com/v1/audio/transcriptions",
   "api_key": "sk-your-api-key",
   "hotkey": ["ctrl", "shift", "space"],
+  "push_to_talk": false,
   "language": "en",
   "auto_paste": true,
   "copy_to_clipboard": true,
@@ -248,16 +282,16 @@ source .venv/bin/activate  # Linux/macOS
 turbo-whisper
 ```
 
-1. Press **Ctrl+Shift+Space** to start recording
+1. Press your configured hotkey to start recording
 2. Speak your text
-3. Press **Ctrl+Shift+Space** again to stop and transcribe
+3. Press the hotkey again to stop and transcribe
 4. Text is automatically typed into the focused window (wherever your cursor is)
 
 ### Keyboard Shortcuts
 
 | Shortcut | Action |
 |----------|--------|
-| Ctrl+Shift+Space | Start/stop recording (configurable) |
+| Configurable hotkey | Start/stop recording |
 | Esc | Cancel recording (when window is focused) |
 
 ### Custom Hotkey
@@ -265,11 +299,21 @@ turbo-whisper
 Edit your config to change the hotkey:
 ```json
 {
-  "hotkey": ["ctrl", "alt", "w"]
+  "hotkey": ["ctrl", "alt", "w"],
+  "push_to_talk": false
 }
 ```
 
 Available modifiers: `ctrl`, `shift`, `alt`, `super`
+
+Enable hold-to-talk (press and hold to record, release to stop):
+
+```json
+{
+  "hotkey": ["alt"],
+  "push_to_talk": true
+}
+```
 
 ### Autostart on Login
 
