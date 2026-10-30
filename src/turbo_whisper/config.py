@@ -2,7 +2,7 @@
 
 import json
 import os
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, fields
 from datetime import datetime
 from pathlib import Path
 from typing import TypedDict
@@ -11,6 +11,7 @@ from typing import TypedDict
 def _default_hotkey() -> list[str]:
     """Return platform-appropriate default hotkey."""
     import sys
+
     if sys.platform == "win32":
         # Alt+Space conflicts with Windows window menu
         # Ctrl+Shift+Space conflicts with various apps
@@ -33,7 +34,8 @@ class Config:
     """Application configuration."""
 
     # API settings
-    api_url: str = "https://whisper.weeksfamily.me/v1/audio/transcriptions"
+    api_url: str = "https://api.openai.com/v1/audio/transcriptions"
+    api_model: str = "whisper-1"
     api_key: str = ""
 
     # Hotkey settings (using pynput key names)
@@ -66,10 +68,12 @@ class Config:
     typing_delay_ms: int = 5  # Milliseconds between keystrokes (increase if terminal freezes)
 
     # Transcription settings
-    transcription_timeout: float = 30.0  # HTTP read/write timeout in seconds; raise for long recordings
+    transcription_timeout: float = (
+        30.0  # HTTP read/write timeout in seconds; raise for long recordings
+    )
 
     # Claude Code integration
-    claude_integration: bool = True  # Enable integration server for Claude Code
+    claude_integration: bool = False  # Enable integration server for Claude Code
     claude_integration_port: int = 7878  # Port for integration HTTP server
     claude_wait_timeout: float = 30.0  # Max seconds to wait for Claude ready signal
 
@@ -81,6 +85,7 @@ class Config:
     def get_recordings_dir(self) -> Path:
         """Get the directory for storing audio recordings."""
         import sys
+
         if sys.platform == "win32":
             config_dir = Path(os.environ.get("APPDATA", Path.home() / "AppData" / "Roaming"))
         else:
@@ -142,6 +147,7 @@ class Config:
     def get_config_path(cls) -> Path:
         """Get the configuration file path."""
         import sys
+
         if sys.platform == "win32":
             # Windows: use APPDATA
             config_dir = Path(os.environ.get("APPDATA", Path.home() / "AppData" / "Roaming"))
@@ -170,7 +176,12 @@ class Config:
                             # New format: dict with text and timestamp
                             migrated.append(entry)
                     data["history"] = migrated
-                return cls(**data)
+                known = {item.name for item in fields(cls)}
+                config = cls(**{key: value for key, value in data.items() if key in known})
+                config._unknown_fields = {
+                    key: value for key, value in data.items() if key not in known
+                }
+                return config
             except (json.JSONDecodeError, TypeError) as e:
                 print(f"Warning: Could not load config: {e}")
 
@@ -181,5 +192,19 @@ class Config:
         config_path = self.get_config_path()
         config_path.parent.mkdir(parents=True, exist_ok=True)
 
-        with open(config_path, "w") as f:
-            json.dump(self.__dict__, f, indent=2)
+        import tempfile
+
+        data = {
+            **getattr(self, "_unknown_fields", {}),
+            **{key: value for key, value in self.__dict__.items() if not key.startswith("_")},
+        }
+        temporary = None
+        try:
+            with tempfile.NamedTemporaryFile("w", dir=config_path.parent, delete=False) as output:
+                temporary = Path(output.name)
+                json.dump(data, output, indent=2)
+                output.write("\n")
+            os.replace(temporary, config_path)
+        finally:
+            if temporary is not None:
+                temporary.unlink(missing_ok=True)
