@@ -162,3 +162,25 @@ def test_x11_special_key_names(monkeypatch, key, expected):
     )
     assert manager._resolve(SimpleNamespace(keysym_to_keycode=lambda symbol: symbol)) == (4, 42)
     assert symbols == [expected]
+
+
+def test_native_portal_connection_identifies_the_app_before_any_portal_call(monkeypatch):
+    order = []
+    portal = SimpleNamespace(
+        Register=lambda *a, **kw: order.append(("register", a[0])),
+        Get=lambda *a, **kw: order.append(("capability", a[0])) or 2,
+    )
+    bus = Mock()
+    bus.get_object.return_value = portal
+    dbus = SimpleNamespace(SessionBus=Mock(return_value=bus), DBusException=RuntimeError)
+    monkeypatch.setitem(sys.modules, "dbus", dbus)
+    monkeypatch.setitem(sys.modules, "dbus.mainloop", SimpleNamespace())
+    monkeypatch.setitem(sys.modules, "dbus.mainloop.glib", SimpleNamespace(DBusGMainLoop=Mock()))
+    monkeypatch.setitem(sys.modules, "gi", SimpleNamespace())
+    monkeypatch.setitem(sys.modules, "gi.repository", SimpleNamespace(GLib=Mock()))
+    hotkey.PortalHotkeyManager(["alt", "space"], Mock())
+    dbus.SessionBus.assert_called_once_with(private=True)
+    assert order == [
+        ("register", "turbo-whisper"),
+        ("capability", hotkey.PortalHotkeyManager.INTERFACE),
+    ]

@@ -70,8 +70,17 @@ class PortalHotkeyManager:
         self._loop = None
         self._matches = []
         DBusGMainLoop(set_as_default=True)
-        self._bus = dbus.SessionBus()
+        self._bus = dbus.SessionBus(private=True)
         self._portal = self._bus.get_object("org.freedesktop.portal.Desktop", self.PATH)
+        # Native (unsandboxed) applications must identify the connection before
+        # their first portal call; otherwise GNOME rejects CreateSession.
+        try:
+            self._portal.Register(
+                "turbo-whisper", {}, dbus_interface="org.freedesktop.host.portal.Registry"
+            )
+        except dbus.DBusException:
+            # Older portals lack Registry; desktop-launched apps may already be identified.
+            pass
         # Fail synchronously if this desktop does not implement GlobalShortcuts.
         self._portal.Get(
             self.INTERFACE, "version", dbus_interface="org.freedesktop.DBus.Properties"
@@ -198,6 +207,7 @@ class PortalHotkeyManager:
         if self._thread:
             self._thread.join(timeout=1)
         self._loop = self._thread = None
+        self._bus.close()
 
 
 class HotkeyManager:

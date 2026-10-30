@@ -500,6 +500,7 @@ class TurboWhisper:
         self.config = Config.load()
         self.app = QApplication.instance() or QApplication(sys.argv)
         self.app.setQuitOnLastWindowClosed(False)
+        self.app.setDesktopFileName("turbo-whisper")
         self.app.setWindowIcon(get_tray_icon(128, recording=False))  # Orange when idle
 
         # Components
