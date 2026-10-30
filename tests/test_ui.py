@@ -121,6 +121,7 @@ def test_launcher_reopens_the_existing_settings_window(qapp, monkeypatch):
     import uuid
 
     from PyQt6.QtNetwork import QLocalSocket
+    from PyQt6.QtTest import QSignalSpy
 
     from turbo_whisper import main
 
@@ -130,11 +131,14 @@ def test_launcher_reopens_the_existing_settings_window(qapp, monkeypatch):
     controller.app = qapp
     controller._show_settings = Mock()
     controller._setup_activation_server()
+    activated = QSignalSpy(controller._activation_server.newConnection)
     socket = QLocalSocket()
     try:
         socket.connectToServer(name)
         assert socket.waitForConnected(500)
-        qapp.processEvents()
+        # Windows may finish the named-pipe connection before Qt dispatches its signal.
+        if not activated:
+            assert activated.wait(1500)
         controller._show_settings.assert_called_once()
     finally:
         socket.close()
