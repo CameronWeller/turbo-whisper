@@ -20,6 +20,19 @@ Turbo Whisper is a **free, open source** voice dictation and transcription app f
 
 [Screencast_20260122_152835.webm](https://github.com/user-attachments/assets/0d53b4d5-377c-49bb-9463-24cdfdc02946)
 
+## Actively maintained fork
+
+This fork, maintained by [Cameron Weller](https://github.com/CameronWeller), is
+**actively maintained and improved**, with a focus on Linux desktop reliability,
+source builds, and usability. Report issues and propose improvements at
+[CameronWeller/turbo-whisper](https://github.com/CameronWeller/turbo-whisper).
+
+Fork maintenance started on 2026-10-29. This initial fork preserves upstream's
+application behavior; runtime fixes and improvements will be documented in commits.
+The original project is [KnowAll AI's Turbo Whisper](https://github.com/knowall-ai/turbo-whisper).
+Its authorship and MIT license are preserved. Upstream's PPA and AUR instructions
+below install upstream builds; build this fork from source to use this fork.
+
 ## Features
 
 - **Global hotkey** (Ctrl+Shift+Space) to start/stop recording from anywhere
@@ -120,7 +133,7 @@ paru -S turbo-whisper
 sudo apt install python3-pyaudio portaudio19-dev xdotool xclip
 
 # Clone and install
-git clone https://github.com/knowall-ai/turbo-whisper.git
+git clone https://github.com/CameronWeller/turbo-whisper.git
 cd turbo-whisper
 python3 -m venv .venv
 source .venv/bin/activate
@@ -134,7 +147,7 @@ pip install -e .
 
 ```bash
 sudo dnf install python3-pyaudio portaudio-devel xdotool xclip
-git clone https://github.com/knowall-ai/turbo-whisper.git
+git clone https://github.com/CameronWeller/turbo-whisper.git
 cd turbo-whisper
 python3 -m venv .venv
 source .venv/bin/activate
@@ -148,7 +161,7 @@ pip install -e .
 
 ```bash
 sudo pacman -S python-pyaudio portaudio xdotool xclip
-git clone https://github.com/knowall-ai/turbo-whisper.git
+git clone https://github.com/CameronWeller/turbo-whisper.git
 cd turbo-whisper
 python3 -m venv .venv
 source .venv/bin/activate
@@ -164,7 +177,7 @@ pip install -e .
 brew install portaudio
 
 # Clone and install
-git clone https://github.com/knowall-ai/turbo-whisper.git
+git clone https://github.com/CameronWeller/turbo-whisper.git
 cd turbo-whisper
 python3 -m venv .venv
 source .venv/bin/activate
@@ -175,7 +188,7 @@ pip install -e .
 
 ```powershell
 # Clone the repository
-git clone https://github.com/knowall-ai/turbo-whisper.git
+git clone https://github.com/CameronWeller/turbo-whisper.git
 cd turbo-whisper
 
 # Create virtual environment
